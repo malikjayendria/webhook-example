@@ -1,0 +1,66 @@
+{
+  "name": "webhook-example-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo untuk sistem integrasi PMS dan CRM dengan webhook",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && npm run install:crm && npm run install:pms",
+    "install:crm": "cd crm-service && npm install",
+    "install:pms": "cd pms-service && npm install",
+    "dev": "concurrently \"npm run dev:crm\" \"npm run dev:pms\"",
+    "dev:sequential": "npm run dev:crm & npm run dev:pms",
+    "dev:crm": "cd crm-service && npm run dev",
+    "dev:pms": "cd pms-service && npm run dev",
+    "build": "npm run build:crm && npm run build:pms",
+    "build:crm": "cd crm-service && npm run build",
+    "build:pms": "cd pms-service && npm run build",
+    "start": "concurrently \"npm run start:crm\" \"npm run start:pms\"",
+    "start:crm": "cd crm-service && npm run start",
+    "start:pms": "cd pms-service && npm run start",
+    "db:migrate": "npm run db:migrate:crm && npm run db:migrate:pms",
+    "db:migrate:crm": "cd crm-service && npm run db:migrate",
+    "db:migrate:pms": "cd pms-service && npm run db:migrate",
+    "db:revert": "npm run db:revert:crm && npm run db:revert:pms",
+    "db:revert:crm": "cd crm-service && npm run db:revert",
+    "db:revert:pms": "cd pms-service && npm run db:revert",
+    "db:sync": "npm run db:sync:crm && npm run db:sync:pms",
+    "db:sync:crm": "cd crm-service && npm run db:sync",
+    "db:sync:pms": "cd pms-service && npm run db:sync",
+    "clean": "npm run clean:crm && npm run clean:pms",
+    "clean:crm": "cd crm-service && rm -rf node_modules dist build",
+    "clean:pms": "cd pms-service && rm -rf node_modules dist build",
+    "test": "npm run test:crm && npm run test:pms",
+    "test:crm": "cd crm-service && npm test",
+    "test:pms": "cd pms-service && npm test",
+    "lint": "npm run lint:crm && npm run lint:pms",
+    "lint:crm": "cd crm-service && npm run lint",
+    "lint:pms": "cd pms-service && npm run lint"
+  },
+  "keywords": [
+    "webhook",
+    "pms",
+    "crm",
+    "monorepo",
+    "nodejs",
+    "typescript",
+    "express",
+    "typeorm"
+  ],
+  "author": "Your Organization",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "crm-service",
+    "pms-service"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/webhook-example.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/webhook-example/issues"
+  },
+  "homepage": "https://github.com/your-org/webhook-example#readme"
+}

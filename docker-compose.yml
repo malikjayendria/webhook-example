@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: webhook-example-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: webhook_example
+      MYSQL_USER: webhook_user
+      MYSQL_PASSWORD: webhook_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - webhook-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # CRM Service
+  crm-service:
+    build:
+      context: ./crm-service
+      dockerfile: ../docker/Dockerfile
+    container_name: webhook-example-crm
+    restart: unless-stopped
+    environment:
+      APP_PORT: 5001
+      APP_BASE_PATH: /api/v1
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: webhook_user
+      DB_PASS: webhook_pass
+      DB_NAME: crm_db
+      WEBHOOK_SHARED_SECRET: supersecret-shared-key
+      WEBHOOK_MAX_SKEW_SECONDS: 1800
+    ports:
+      - "5001:5001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - webhook-network
+    volumes:
+      - ./crm-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # PMS Service
+  pms-service:
+    build:
+      context: ./pms-service
+      dockerfile: ../docker/Dockerfile
+    container_name: webhook-example-pms
+    restart: unless-stopped
+    environment:
+      APP_PORT: 4001
+      APP_BASE_PATH: /api/v1
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: webhook_user
+      DB_PASS: webhook_pass
+      DB_NAME: pms_db
+      CRM_WEBHOOK_URL: http://crm-service:5001/api/v1/webhooks/pms
+      CRM_WEBHOOK_SECRET: supersecret-shared-key
+    ports:
+      - "4001:4001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      crm-service:
+        condition: service_started
+    networks:
+      - webhook-network
+    volumes:
+      - ./pms-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  mysql_data:
+
+networks:
+  webhook-network:
+    driver: bridge
