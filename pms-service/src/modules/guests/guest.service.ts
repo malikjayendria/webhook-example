@@ -9,7 +9,7 @@ export async function createGuest(input: CreateGuestDTO): Promise<Guest> {
   return guestRepo.save(guest);
 }
 
-export function listGuests(params: { q?: string }) {
+export function listGuests(params: { q?: string; limit?: number; offset?: number }) {
   return repoListGuests(params);
 }
 

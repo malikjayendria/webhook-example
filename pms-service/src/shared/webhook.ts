@@ -1,8 +1,13 @@
 import axios from "axios";
 import { env } from "../config/env";
-import { hmacSHA256 } from "./utils";
 import { logger } from "../config/logger";
 import { AppDataSource } from "../config/data-source";
+
+// HMAC utility function
+function hmacSHA256(secret: string, payload: string): string {
+  const crypto = require("crypto");
+  return crypto.createHmac("sha256", secret).update(payload, "utf8").digest("hex");
+}
 
 type WebhookEvent = {
   type: "guest.created" | "guest.updated" | "guest.deleted" | "reservation.created" | "reservation.updated" | "reservation.deleted";
