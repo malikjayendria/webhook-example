@@ -10,7 +10,10 @@ export function createApp() {
   app.use(helmet());
   app.use(cors());
 
+  //health check
   app.get("/health", (_req, res) => res.json({ ok: true }));
+
+  //base routes
   app.use(env.basePath, routes);
 
   app.use(errorHandler);

@@ -11,7 +11,10 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: "1mb" }));
 
+  //health check
   app.get("/health", (_req, res) => res.json({ ok: true }));
+
+  //base routes
   app.use(env.basePath, routes);
 
   app.use(errorHandler);

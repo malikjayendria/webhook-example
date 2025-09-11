@@ -78,6 +78,7 @@ sequenceDiagram
 ```
 
 ### 1. Trigger Event di PMS
+
 Setiap perubahan data (create/update/delete) pada guest atau reservation akan trigger webhook:
 
 ```typescript
@@ -86,25 +87,30 @@ await emitToCRM({
   type: "guest.created",
   idempotency_key: randomUUID(),
   timestamp: Date.now(),
-  payload: guestData
+  payload: guestData,
 });
 ```
 
 ### 2. Pengiriman Webhook
+
 PMS mengirim HTTP POST dengan:
+
 - **HMAC Signature**: SHA256 hash dari payload + secret
 - **Idempotency Key**: UUID untuk mencegah duplikasi
 - **Timestamp**: Unix timestamp untuk freshness check
 - **Payload**: Data perubahan
 
 ### 3. Validasi di CRM
+
 CRM melakukan validasi:
+
 - ✅ **Signature Verification**: HMAC check
 - ✅ **Timestamp Freshness**: Within 30 minutes
 - ✅ **Idempotency**: Check duplicate events
 - ✅ **Payload Schema**: Zod validation
 
 ### 4. Processing & Audit
+
 - Update guest profile dengan data terbaru
 - Log event untuk audit trail
 - Handle errors dengan circuit breaker
@@ -114,6 +120,7 @@ CRM melakukan validasi:
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - MySQL 8.0+
 - Docker & Docker Compose (optional)
@@ -121,12 +128,14 @@ CRM melakukan validasi:
 ### Setup Development
 
 1. **Clone repository**
+
    ```bash
    git clone https://github.com/your-org/webhook-example.git
    cd webhook-example
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm run install:all
    # atau manual:
@@ -135,6 +144,7 @@ CRM melakukan validasi:
    ```
 
 3. **Setup environment**
+
    ```bash
    cp crm-service/.env.example crm-service/.env
    cp pms-service/.env.example pms-service/.env
@@ -142,6 +152,7 @@ CRM melakukan validasi:
    ```
 
 4. **Setup database**
+
    ```bash
    # Jalankan MySQL dan buat databases
    mysql -u root -p
@@ -150,6 +161,7 @@ CRM melakukan validasi:
    ```
 
 5. **Run migrations**
+
    ```bash
    npm run db:migrate
    # atau manual:
@@ -157,7 +169,18 @@ CRM melakukan validasi:
    # cd ../pms-service && npm run db:migrate
    ```
 
-6. **Start services**
+6. **Truncate database (optional - untuk testing)**
+
+   ```bash
+   # Kosongkan semua data tapi pertahankan tabel
+   npm run db:truncate
+
+   # Atau truncate per service
+   npm run db:truncate:crm  # CRM database only
+   npm run db:truncate:pms  # PMS database only
+   ```
+
+7. **Start services**
    ```bash
    npm run dev
    # atau manual di terminal terpisah:
@@ -227,6 +250,7 @@ POST /api/v1/webhooks/pms
 ## 🔧 Konfigurasi Environment
 
 ### CRM Service (.env)
+
 ```bash
 APP_PORT=5001
 APP_BASE_PATH=/api/v1
@@ -240,6 +264,7 @@ WEBHOOK_MAX_SKEW_SECONDS=1800
 ```
 
 ### PMS Service (.env)
+
 ```bash
 APP_PORT=4001
 APP_BASE_PATH=/api/v1
@@ -254,9 +279,101 @@ CRM_WEBHOOK_SECRET=supersecret-shared-key
 
 ---
 
+## 🗄️ Database Management
+
+### Database Truncate Script
+
+Script `npm run db:truncate` digunakan untuk **mengosongkan semua data** dari tabel-tabel database tanpa menghapus struktur tabel. Berguna untuk testing dan development.
+
+#### Fitur Script:
+
+- ✅ **Multi-database support**: Truncate crm_db dan pms_db secara bersamaan
+- ✅ **Status reporting**: Tampilkan jumlah data sebelum dan sesudah truncate
+- ✅ **Safe operations**: Foreign key checks dimatikan sementara
+- ✅ **Error handling**: Continue processing jika tabel tidak ditemukan
+- ✅ **TypeORM integration**: Menggunakan konfigurasi database yang sama
+
+#### Cara Penggunaan:
+
+```bash
+# Basic usage (truncate semua database)
+npm run db:truncate
+
+# Atau truncate per service
+npm run db:truncate:crm  # CRM database only
+npm run db:truncate:pms  # PMS database only
+
+# Atau manual per service
+cd crm-service && npm run db:truncate
+cd ../pms-service && npm run db:truncate
+```
+
+#### Tables yang Di-refresh:
+
+**CRM Database (`crm_db`):**
+
+- `guest_profiles` - Rich guest profile data
+- `events` - Webhook event audit logs
+
+**PMS Database (`pms_db`):**
+
+- `guests` - Guest information
+- `reservations` - Reservation data
+
+#### Contoh Output:
+
+```bash
+# CRM Service
+$ npm run db:truncate
+✅ Connected to database
+📋 guest_profiles: 15 records
+📋 events: 23 records
+✅ Truncated guest_profiles
+✅ Truncated events
+✅ Database truncate completed successfully
+
+# PMS Service
+$ npm run db:truncate
+✅ Connected to database
+📋 guests: 8 records
+📋 reservations: 12 records
+✅ Truncated guests
+✅ Truncated reservations
+✅ Database truncate completed successfully
+```
+
+#### Tables yang Di-truncate:
+
+**CRM Database:**
+
+- `guest_profiles` - Rich guest profile data
+- `events` - Webhook event audit logs
+
+**PMS Database:**
+
+- `guests` - Guest information
+- `reservations` - Reservation data
+
+#### ⚠️ Peringatan Penting:
+
+- **Script ini akan MENGHAPUS SEMUA DATA** di tabel-tabel yang disebutkan
+- **Struktur tabel tetap dipertahankan**
+- **Backup data penting** sebelum menjalankan script ini
+- **Gunakan hanya untuk development/testing**
+
+#### Use Cases:
+
+- 🧪 **Testing**: Kosongkan data untuk test scenario baru
+- 🔄 **Development**: Reset state untuk development workflow
+- 🐛 **Debugging**: Clear data untuk reproduce issues
+- 📊 **Demo**: Prepare clean state untuk demo/presentasi
+
+---
+
 ## 🧪 Testing Webhook
 
 ### 1. Create Guest di PMS
+
 ```bash
 curl -X POST http://localhost:4001/api/v1/guests \
   -H "Content-Type: application/json" \
@@ -270,6 +387,7 @@ curl -X POST http://localhost:4001/api/v1/guests \
 ```
 
 ### 2. Verifikasi Webhook di CRM
+
 ```bash
 # Check events
 curl http://localhost:5001/api/v1/events
@@ -279,6 +397,7 @@ curl http://localhost:5001/api/v1/guest-profiles
 ```
 
 ### 3. Update Guest
+
 ```bash
 curl -X PUT http://localhost:4001/api/v1/guests/1 \
   -H "Content-Type: application/json" \
@@ -292,6 +411,7 @@ curl -X PUT http://localhost:4001/api/v1/guests/1 \
 ## 🏗️ Architecture
 
 ### Tech Stack
+
 - **Runtime**: Node.js 18+
 - **Language**: TypeScript 5.0+
 - **Framework**: Express.js
@@ -302,6 +422,7 @@ curl -X PUT http://localhost:4001/api/v1/guests/1 \
 - **Container**: Docker
 
 ### Design Patterns
+
 - **Repository Pattern**: Data access abstraction
 - **Service Layer**: Business logic encapsulation
 - **Middleware Pattern**: Request/response processing
@@ -311,10 +432,12 @@ curl -X PUT http://localhost:4001/api/v1/guests/1 \
 ### Database Schema
 
 #### PMS Database
+
 - `guests`: Guest information
 - `reservations`: Reservation data
 
 #### CRM Database
+
 - `events`: Webhook event audit log
 - `guest_profiles`: Aggregated guest data
 
@@ -323,6 +446,7 @@ curl -X PUT http://localhost:4001/api/v1/guests/1 \
 ## 📊 Monitoring & Observability
 
 ### Health Checks
+
 ```bash
 # PMS Health
 curl http://localhost:4001/api/v1/health
@@ -332,12 +456,14 @@ curl http://localhost:5001/api/v1/health
 ```
 
 ### Webhook Status
+
 ```bash
 # PMS Webhook Status
 curl http://localhost:4001/api/v1/guests/webhook/status
 ```
 
 ### Logs
+
 - Application logs menggunakan Pino
 - Database query logs (development only)
 - Webhook delivery logs dengan correlation IDs
@@ -359,6 +485,7 @@ curl http://localhost:4001/api/v1/guests/webhook/status
 ## 🚀 Deployment
 
 ### Production Checklist
+
 - [ ] Update `.env` dengan production values
 - [ ] Setup database users dengan minimal privileges
 - [ ] Configure reverse proxy (nginx)
@@ -369,6 +496,7 @@ curl http://localhost:4001/api/v1/guests/webhook/status
 - [ ] Setup CI/CD pipeline
 
 ### Docker Production
+
 ```bash
 # Build images
 docker-compose -f docker-compose.prod.yml build
@@ -388,6 +516,7 @@ docker-compose -f docker-compose.prod.yml up -d
 5. Open Pull Request
 
 ### Development Guidelines
+
 - Use TypeScript untuk type safety
 - Follow ESLint configuration
 - Write tests untuk new features
@@ -405,6 +534,7 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For questions or support:
+
 - Create GitHub Issue
 - Check documentation
 - Review webhook logs
@@ -414,6 +544,7 @@ For questions or support:
 ## 🔄 Roadmap
 
 ### Phase 2 Features
+
 - [ ] Rate limiting per client
 - [ ] Webhook dashboard UI
 - [ ] Advanced retry strategies
@@ -422,6 +553,7 @@ For questions or support:
 - [ ] Real-time notifications
 
 ### Future Enhancements
+
 - [ ] Machine learning untuk guest insights
 - [ ] Advanced analytics dashboard
 - [ ] Mobile app companion
