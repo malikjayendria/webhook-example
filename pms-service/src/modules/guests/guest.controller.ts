@@ -24,8 +24,22 @@ export async function create(req: Request, res: Response, next: NextFunction) {
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
     const q = String(req.query.q ?? "");
-    const items = await listGuests({ q: q || undefined });
-    res.json(ok(items));
+    const pageLimit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100
+    const pageOffset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const items = await listGuests({ q: q || undefined, limit: pageLimit, offset: pageOffset });
+
+    res.json(
+      ok({
+        data: items,
+        pagination: {
+          limit: pageLimit,
+          offset: pageOffset,
+          hasMore: items.length === pageLimit,
+          query: q || undefined,
+        },
+      })
+    );
   } catch (e) {
     next(e);
   }

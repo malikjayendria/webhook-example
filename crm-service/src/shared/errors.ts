@@ -1,14 +1,39 @@
 import { NextFunction, Request, Response } from "express";
 import { logger } from "../config/logger";
 import { fail } from "./http";
+import { formatZodError, getErrorStatus, getErrorCode } from "./error-utils";
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
-  const msg = typeof err?.message === "string" ? err.message : "Internal Server Error";
+  // Log the full error for debugging
+  logger.error(err);
 
-  let status = 500;
-  if (msg === "Invalid signature" || msg === "Timestamp skew too large" || msg === "Missing headers") status = 400;
-  if (msg === "Duplicate idempotency key" || msg.startsWith("Idempotency key conflict")) status = 409;
-  if (typeof err?.status === "number") status = err.status; // <— hormati status custom di atas
+  // Format error message for user-friendly response
+  let message = "Internal Server Error";
 
-  res.status(status).json(fail(msg, status === 409 ? "CONFLICT" : status >= 500 ? "INTERNAL" : "INVALID"));
+  try {
+    // Handle Zod validation errors
+    if (err?.name === "ZodError") {
+      message = formatZodError(err);
+    } else if (typeof err?.message === "string") {
+      message = err.message;
+    }
+
+    // Handle specific known errors
+    if (message === "Invalid signature" || message === "Timestamp skew too large" || message === "Missing headers") {
+      message = "Invalid request data";
+    }
+
+    if (message === "Duplicate idempotency key" || message.startsWith("Idempotency key conflict")) {
+      message = "Request already processed";
+    }
+  } catch (formatError) {
+    // If formatting fails, use safe fallback
+    message = "An error occurred while processing your request";
+  }
+
+  // Get appropriate status and error code
+  const status = err?.status || getErrorStatus(err);
+  const errorCode = getErrorCode(err);
+
+  res.status(status).json(fail(message, errorCode));
 }

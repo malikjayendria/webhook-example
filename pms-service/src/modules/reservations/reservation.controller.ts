@@ -16,9 +16,21 @@ export async function create(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export async function list(_req: Request, res: Response, next: NextFunction) {
+export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    res.json(ok(await listReservations()));
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const reservations = await listReservations({ limit, offset });
+
+    res.json(ok({
+      data: reservations,
+      pagination: {
+        limit,
+        offset,
+        hasMore: reservations.length === limit,
+      },
+    }));
   } catch (e) {
     next(e);
   }
