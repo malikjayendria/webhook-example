@@ -149,10 +149,17 @@
     <script>
       const API_BASE = "/api/v1";
       let isLoading = false;
+      let rateLimitBackoff = 1000; // Start with 1 second backoff
+      let consecutiveErrors = 0;
+      let lastRequestTime = 0;
 
       // Cache for API responses
       const apiCache = new Map();
-      const CACHE_DURATION = 5000; // 5 seconds for development (shorter cache)
+      const CACHE_DURATION = 30000; // 30 seconds cache (increased for rate limiting)
+      const MIN_REQUEST_INTERVAL = 2000; // Minimum 2 seconds between requests
+
+      // Request deduplication - prevent multiple simultaneous requests to same endpoint
+      const activeRequests = new Map();
 
       // Load dashboard data on page load
       document.addEventListener("DOMContentLoaded", function () {
@@ -161,10 +168,24 @@
         setupRealTimeUpdates();
       });
 
-      // Optimized API call with caching
+      // Optimized API call with caching, rate limit handling, and deduplication
       async function apiCall(endpoint, options = {}, force = false) {
         const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
         const now = Date.now();
+
+        // Request deduplication: If same request is already in progress, wait for it
+        if (activeRequests.has(cacheKey) && !force) {
+          console.log(`Request deduplication: Waiting for existing request to ${endpoint}`);
+          return activeRequests.get(cacheKey);
+        }
+
+        // Rate limiting: Ensure minimum interval between requests
+        const timeSinceLastRequest = now - lastRequestTime;
+        if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+          const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+          console.log(`Rate limiting: Waiting ${waitTime}ms before next request`);
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
 
         // Check cache first (skip if force refresh)
         if (!force && apiCache.has(cacheKey)) {
@@ -178,51 +199,100 @@
 
         console.log(`${force ? "Force refreshing" : "Fetching"} data from ${endpoint}`);
 
-        try {
-          const response = await fetch(endpoint, {
-            ...options,
-            headers: {
-              "Content-Type": "application/json",
-              ...options.headers,
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-
-          // Cache successful GET requests (only if not forced)
-          if (!force && (!options.method || options.method === "GET")) {
-            apiCache.set(cacheKey, {
-              data: data,
-              timestamp: now,
+        // Store request for deduplication
+        const requestPromise = (async () => {
+          try {
+            const response = await fetch(endpoint, {
+              ...options,
+              headers: {
+                "Content-Type": "application/json",
+                ...options.headers,
+              },
             });
-            console.log(`Cached data for ${endpoint}`);
-          }
 
-          return data;
-        } catch (error) {
-          console.error("API call failed:", error);
-          throw error;
-        }
+            lastRequestTime = Date.now();
+
+            if (response.status === 429) {
+              // Rate limit exceeded - implement exponential backoff
+              consecutiveErrors++;
+              const backoffTime = Math.min(rateLimitBackoff * Math.pow(2, consecutiveErrors), 30000); // Max 30 seconds
+              rateLimitBackoff = backoffTime;
+
+              console.warn(`Rate limit exceeded for ${endpoint}. Backing off for ${backoffTime}ms`);
+              throw new Error(`RATE_LIMIT_EXCEEDED: Backing off for ${backoffTime}ms`);
+            }
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Reset error counter on success
+            if (consecutiveErrors > 0) {
+              consecutiveErrors = 0;
+              rateLimitBackoff = 1000; // Reset backoff
+              console.log("Rate limit backoff reset after successful request");
+            }
+
+            // Cache successful GET requests (only if not forced)
+            if (!force && (!options.method || options.method === "GET")) {
+              apiCache.set(cacheKey, {
+                data: data,
+                timestamp: now,
+              });
+              console.log(`Cached data for ${endpoint}`);
+            }
+
+            return data;
+          } catch (error) {
+            console.error("API call failed:", error);
+
+            // If it's a rate limit error, schedule retry with backoff
+            if (error.message.includes("RATE_LIMIT_EXCEEDED")) {
+              const backoffTime = Math.min(rateLimitBackoff * Math.pow(2, consecutiveErrors), 30000);
+              console.log(`Scheduling retry for ${endpoint} in ${backoffTime}ms`);
+
+              return new Promise((resolve, reject) => {
+                setTimeout(async () => {
+                  try {
+                    const result = await apiCall(endpoint, options, force);
+                    resolve(result);
+                  } catch (retryError) {
+                    reject(retryError);
+                  }
+                }, backoffTime);
+              });
+            }
+
+            throw error;
+          } finally {
+            // Clean up active request
+            activeRequests.delete(cacheKey);
+          }
+        })();
+
+        // Store the promise for deduplication
+        activeRequests.set(cacheKey, requestPromise);
+        return requestPromise;
       }
 
-      // Setup real-time updates
+      // Setup real-time updates with reduced frequency
       function setupRealTimeUpdates() {
-        // Auto refresh every 15 seconds for development (less aggressive)
+        // Auto refresh every 60 seconds (much less aggressive to prevent rate limiting)
         setInterval(() => {
-          if (!isLoading) {
-            // Only refresh if not currently loading
+          if (!isLoading && consecutiveErrors === 0) {
+            // Only refresh if not currently loading and no recent errors
+            console.log("Auto-refreshing dashboard data...");
             loadDashboardStats(true); // Force refresh
             loadRecentActivity(true);
           }
-        }, 15000);
+        }, 60000); // 60 seconds instead of 15
 
         // Listen for visibility change to refresh when tab becomes active
         document.addEventListener("visibilitychange", () => {
-          if (!document.hidden && !isLoading) {
+          if (!document.hidden && !isLoading && consecutiveErrors === 0) {
+            console.log("Tab became active, refreshing data...");
             loadDashboardStats(true);
             loadRecentActivity(true);
           }
