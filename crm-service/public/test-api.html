@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test - CRM</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h1 class="h2 fw-bold mb-3">CRM API Test Debug</h1>
+          <p class="text-muted">Test koneksi API CRM dan parsing data</p>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <button class="btn btn-primary-custom btn-custom w-100 mb-2" id="testEventsBtn">Test Events API</button>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-success-custom btn-custom w-100 mb-2" id="testGuestProfilesBtn">Test Guest Profiles API</button>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-info btn-custom w-100 mb-2" id="testAllBtn">Test All APIs</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card-custom">
+            <div class="card-header">
+              <h5 class="mb-0">API Response</h5>
+            </div>
+            <div class="card-body">
+              <pre id="apiResponse" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-size: 0.9em">Click a test button to see API response...</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+
+      // Add event listeners for buttons
+      document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById("testEventsBtn").addEventListener("click", testEventsAPI);
+        document.getElementById("testGuestProfilesBtn").addEventListener("click", testGuestProfilesAPI);
+        document.getElementById("testAllBtn").addEventListener("click", testAllAPIs);
+      });
+
+      async function testEventsAPI() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Loading...";
+
+        try {
+          console.log("Testing events API...");
+          const response = await fetch(`${API_BASE}/events`);
+          const data = await response.json();
+
+          console.log("Events API Response:", data);
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+
+          if (data.success && Array.isArray(data.data)) {
+            console.log("✅ Events API working! Found", data.data.length, "events");
+          } else {
+            console.error("❌ Events API failed:", data);
+          }
+        } catch (error) {
+          console.error("❌ Events API Error:", error);
+          responseEl.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testGuestProfilesAPI() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Loading...";
+
+        try {
+          console.log("Testing guest profiles API...");
+          const response = await fetch(`${API_BASE}/guest-profiles`);
+          const data = await response.json();
+
+          console.log("Guest Profiles API Response:", data);
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+
+          if (data.success && Array.isArray(data.data)) {
+            console.log("✅ Guest Profiles API working! Found", data.data.length, "profiles");
+          } else {
+            console.error("❌ Guest Profiles API failed:", data);
+          }
+        } catch (error) {
+          console.error("❌ Guest Profiles API Error:", error);
+          responseEl.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testAllAPIs() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Testing all APIs...\n\n";
+
+        // Test Events API
+        try {
+          const eventsResponse = await fetch(`${API_BASE}/events`);
+          const eventsData = await eventsResponse.json();
+          console.log("Events:", eventsData);
+
+          responseEl.textContent += `Events API: ${eventsData.success ? "✅" : "❌"} (${eventsData.data?.length || 0} records)\n`;
+        } catch (error) {
+          responseEl.textContent += `Events API: ❌ Error - ${error.message}\n`;
+        }
+
+        // Test Guest Profiles API
+        try {
+          const profilesResponse = await fetch(`${API_BASE}/guest-profiles`);
+          const profilesData = await profilesResponse.json();
+          console.log("Guest Profiles:", profilesData);
+
+          responseEl.textContent += `Guest Profiles API: ${profilesData.success ? "✅" : "❌"} (${profilesData.data?.length || 0} records)\n`;
+        } catch (error) {
+          responseEl.textContent += `Guest Profiles API: ❌ Error - ${error.message}\n`;
+        }
+
+        responseEl.textContent += "\nCheck browser console for detailed logs.";
+      }
+    </script>
+  </body>
+</html>

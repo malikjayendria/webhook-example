@@ -9,8 +9,28 @@ import routes from "./routes";
 
 export function createApp() {
   const app = express();
-  app.use(helmet());
+
+  // Configure Helmet with CSP that allows inline event handlers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+          fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'"],
+        },
+      },
+    })
+  );
+
   app.use(cors());
+
+  // Serve static files
+  app.use(express.static("public"));
 
   // Input sanitization middleware
   app.use(sanitizeInput);

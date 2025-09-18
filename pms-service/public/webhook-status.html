@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webhook Status - PMS</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <!-- Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/index.html">
+            <i class="fas fa-hotel me-2"></i>
+            PMS Dashboard
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/index.html"> <i class="fas fa-tachometer-alt me-1"></i>Dashboard </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/guests.html"> <i class="fas fa-users me-1"></i>Manage Guests </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/reservations.html"> <i class="fas fa-calendar-check me-1"></i>Manage Reservations </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/webhook-status.html"> <i class="fas fa-link me-1"></i>Webhook Status </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-link text-primary me-3" style="font-size: 2rem"></i>
+            <div>
+              <h1 class="h2 fw-bold mb-1">Webhook Status Monitor</h1>
+              <p class="text-muted mb-0">Real-time webhook system health and circuit breaker status</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alert Container -->
+      <div id="alertContainer" class="mb-4"></div>
+
+      <!-- Action Bar -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <button class="btn btn-primary-custom btn-custom" onclick="refreshStatus()"><i class="fas fa-sync-alt me-2"></i>Refresh Status</button>
+        </div>
+      </div>
+
+      <!-- Status Cards -->
+      <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+          <div class="card-custom">
+            <div class="card-header bg-white">
+              <h5 class="mb-0">
+                <i class="fas fa-shield-alt text-primary me-2"></i>
+                Circuit Breaker Status
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                    <span class="fw-bold">State:</span>
+                    <span id="circuitState" class="status-value badge bg-secondary">-</span>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                    <span class="fw-bold">Failures:</span>
+                    <span id="circuitFailures" class="status-value">0</span>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                    <span class="fw-bold">Last Failure:</span>
+                    <span id="circuitLastFailure" class="status-value">Never</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+          <div class="card-custom">
+            <div class="card-header bg-white">
+              <h5 class="mb-0">
+                <i class="fas fa-list text-success me-2"></i>
+                Queue Status
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                    <span class="fw-bold">Failed Webhooks:</span>
+                    <span id="failedCount" class="status-value badge bg-danger">0</span>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                    <span class="fw-bold">Processing:</span>
+                    <span id="processingCount" class="status-value badge bg-warning">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Information Section -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card-custom p-4">
+            <div class="text-center mb-4">
+              <i class="fas fa-info-circle text-info" style="font-size: 3rem"></i>
+            </div>
+            <h3 class="h4 fw-bold text-center mb-3">System Information</h3>
+            <div class="row text-center g-4 mb-4">
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-play-circle text-success mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">CLOSED</h6>
+                  <small class="text-muted">Webhooks sent normally</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-stop-circle text-danger mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">OPEN</h6>
+                  <small class="text-muted">Too many failures, queued</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-pause-circle text-warning mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">HALF_OPEN</h6>
+                  <small class="text-muted">Testing connection</small>
+                </div>
+              </div>
+            </div>
+            <p class="text-muted text-center">The webhook system automatically retries failed requests and uses circuit breaker pattern to prevent system overload and ensure reliable data synchronization.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+
+      // Load status on page load
+      document.addEventListener("DOMContentLoaded", loadStatus);
+
+      function loadStatus() {
+        fetch(`${API_BASE}/guests/webhook/status`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              updateStatus(data);
+            } else {
+              showAlert("Error loading webhook status: " + (data.error?.message || "Unknown error"), "error");
+            }
+          })
+          .catch((error) => {
+            showAlert("Error loading webhook status: " + error.message, "error");
+          });
+      }
+
+      function updateStatus(data) {
+        const circuit = data.circuit_breaker || {};
+        const queue = data.queue || {};
+
+        // Update circuit breaker
+        const circuitStateEl = document.getElementById("circuitState");
+        circuitStateEl.textContent = circuit.state || "UNKNOWN";
+        circuitStateEl.className = `status-value circuit-${(circuit.state || "").toLowerCase()}`;
+
+        document.getElementById("circuitFailures").textContent = circuit.failures || 0;
+        document.getElementById("circuitLastFailure").textContent = circuit.last_failure ? new Date(circuit.last_failure).toLocaleString() : "Never";
+
+        // Update queue
+        document.getElementById("failedCount").textContent = queue.failed_count || 0;
+        document.getElementById("processingCount").textContent = queue.processing_count || 0;
+      }
+
+      function refreshStatus() {
+        loadStatus();
+        showAlert("Status refreshed!", "success");
+      }
+
+      function showAlert(message, type) {
+        const alertContainer = document.getElementById("alertContainer");
+        alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => {
+          alertContainer.innerHTML = "";
+        }, 3000);
+      }
+
+      // Auto refresh every 10 seconds for development
+      setInterval(loadStatus, 10000);
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Navigation highlighting
+      document.addEventListener("DOMContentLoaded", function () {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll(".navbar-nav .nav-link");
+
+        navLinks.forEach((link) => {
+          if (link.getAttribute("href") === currentPath) {
+            link.classList.add("active");
+            link.style.background = "rgba(255, 255, 255, 0.2)";
+          }
+        });
+
+        // Add fade-in animation to cards
+        const cards = document.querySelectorAll(".card-custom");
+        cards.forEach((card, index) => {
+          card.style.animationDelay = `${index * 0.1}s`;
+          card.classList.add("fade-in");
+        });
+      });
+    </script>
+  </body>
+</html>

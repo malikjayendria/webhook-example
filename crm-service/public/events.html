@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Events - CRM</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <!-- Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            CRM Dashboard
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/index.html"> <i class="fas fa-tachometer-alt me-1"></i>Dashboard </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/events.html"> <i class="fas fa-history me-1"></i>View Events </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/guest-profiles.html"> <i class="fas fa-address-book me-1"></i>Guest Profiles </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-history text-primary me-3" style="font-size: 2rem"></i>
+            <div>
+              <h1 class="h2 fw-bold mb-1">Event Log</h1>
+              <p class="text-muted mb-0">Monitor webhook events and system activities</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <button class="btn btn-primary-custom btn-custom" onclick="loadEvents()"><i class="fas fa-sync-alt me-2"></i>Refresh Events</button>
+          <button class="btn btn-secondary btn-custom ms-2" onclick="clearFilters()"><i class="fas fa-eraser me-2"></i>Clear Filters</button>
+        </div>
+        <div class="col-md-6 text-end">
+          <span id="eventCount" class="badge bg-primary fs-6">0 Events</span>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card-custom p-4 mb-4">
+        <h5 class="mb-3">
+          <i class="fas fa-filter me-2 text-primary"></i>
+          Filters
+        </h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="typeFilter" class="form-label fw-bold">Event Type</label>
+            <select class="form-select" id="typeFilter">
+              <option value="">All Types</option>
+              <option value="guest.created">Guest Created</option>
+              <option value="guest.updated">Guest Updated</option>
+              <option value="guest.deleted">Guest Deleted</option>
+              <option value="reservation.created">Reservation Created</option>
+              <option value="reservation.updated">Reservation Updated</option>
+              <option value="reservation.deleted">Reservation Deleted</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="dateFilter" class="form-label fw-bold">Date From</label>
+            <input type="date" class="form-control" id="dateFilter" />
+          </div>
+          <div class="col-md-4">
+            <label for="searchFilter" class="form-label fw-bold">Search Email</label>
+            <input type="text" class="form-control" id="searchFilter" placeholder="Search by email..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Alert Container -->
+      <div id="alertContainer" class="mb-4"></div>
+
+      <!-- Events Table -->
+      <div class="card-custom">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-list me-2 text-primary"></i>
+            Event History
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="eventsTable">
+              <thead class="table-light">
+                <tr>
+                  <th><i class="fas fa-hashtag me-1"></i>ID</th>
+                  <th><i class="fas fa-tag me-1"></i>Type</th>
+                  <th><i class="fas fa-clock me-1"></i>Timestamp</th>
+                  <th><i class="fas fa-calendar me-1"></i>Received At</th>
+                  <th><i class="fas fa-code me-1"></i>Payload</th>
+                  <th><i class="fas fa-globe me-1"></i>Source IP</th>
+                </tr>
+              </thead>
+              <tbody id="eventsTableBody">
+                <tr>
+                  <td colspan="6" class="text-center py-4">
+                    <div class="d-flex align-items-center justify-content-center">
+                      <div class="loading-spinner me-2"></div>
+                      <span>Loading events...</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+      let allEvents = [];
+      let searchTimeout = null;
+      let isLoading = false;
+
+      // Cache for API responses
+      const apiCache = new Map();
+      const CACHE_DURATION = 5000; // 5 seconds for development (shorter cache)
+
+      // Load events on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        loadEvents();
+        setupRealTimeUpdates();
+      });
+
+      // Add filter event listeners
+      document.getElementById("typeFilter").addEventListener("change", applyFilters);
+      document.getElementById("dateFilter").addEventListener("change", applyFilters);
+      document.getElementById("searchFilter").addEventListener("input", applyFilters);
+
+      // Optimized API call with caching
+      async function apiCall(endpoint, options = {}, force = false) {
+        const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
+        const now = Date.now();
+
+        // Check cache first (skip if force refresh)
+        if (!force && apiCache.has(cacheKey)) {
+          const cached = apiCache.get(cacheKey);
+          if (now - cached.timestamp < CACHE_DURATION) {
+            console.log(`Using cached data for ${endpoint}`);
+            return cached.data;
+          }
+          apiCache.delete(cacheKey);
+        }
+
+        console.log(`${force ? "Force refreshing" : "Fetching"} data from ${endpoint}`);
+
+        try {
+          const response = await fetch(endpoint, {
+            ...options,
+            headers: {
+              "Content-Type": "application/json",
+              ...options.headers,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          // Cache successful GET requests (only if not forced)
+          if (!force && (!options.method || options.method === "GET")) {
+            apiCache.set(cacheKey, {
+              data: data,
+              timestamp: now,
+            });
+            console.log(`Cached data for ${endpoint}`);
+          }
+
+          return data;
+        } catch (error) {
+          console.error("API call failed:", error);
+          throw error;
+        }
+      }
+
+      // Setup real-time updates
+      function setupRealTimeUpdates() {
+        // Auto refresh every 15 seconds for development (less aggressive)
+        setInterval(() => {
+          if (!isLoading) {
+            // Only refresh if not currently loading
+            loadEvents(true); // Force refresh
+          }
+        }, 15000);
+
+        // Listen for visibility change to refresh when tab becomes active
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden && !isLoading) {
+            loadEvents(true);
+          }
+        });
+      }
+
+      async function loadEvents(force = false) {
+        if (isLoading && !force) return;
+
+        isLoading = true;
+        const loadingEl = document.querySelector(".loading-spinner");
+
+        // Show loading state
+        if (loadingEl) {
+          loadingEl.style.display = "inline-block";
+        }
+
+        try {
+          const data = await apiCall(`${API_BASE}/events`, {}, force);
+
+          if (data.success) {
+            // CRM returns direct array: { success: true, data: [...] }
+            allEvents = Array.isArray(data.data) ? data.data : [];
+            applyFilters();
+            updateEventCount();
+          } else {
+            throw new Error(data.error?.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Error loading events:", error);
+          showAlert("Error loading events: " + error.message, "error");
+
+          // Show error state in table
+          const tbody = document.getElementById("eventsTableBody");
+          if (tbody) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="6" class="text-center py-4">
+                  <div class="text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Failed to load events. <button class="btn btn-sm btn-outline-primary" onclick="loadEvents(true)">Retry</button></p>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+        } finally {
+          // Always hide loading state
+          isLoading = false;
+          if (loadingEl) {
+            loadingEl.style.display = "none";
+          }
+        }
+      }
+
+      function updateEventCount() {
+        const countEl = document.getElementById("eventCount");
+        if (countEl) {
+          countEl.textContent = `${allEvents.length} Events`;
+        }
+      }
+
+      function applyFilters() {
+        // Clear previous timeout
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+
+        // Debounce search for better performance
+        searchTimeout = setTimeout(() => {
+          const typeFilter = document.getElementById("typeFilter").value;
+          const dateFilter = document.getElementById("dateFilter").value;
+          const searchFilter = document.getElementById("searchFilter").value.toLowerCase();
+
+          let filteredEvents = allEvents;
+
+          // Filter by type
+          if (typeFilter) {
+            filteredEvents = filteredEvents.filter((event) => event.type === typeFilter);
+          }
+
+          // Filter by date
+          if (dateFilter) {
+            const filterDate = new Date(dateFilter);
+            filteredEvents = filteredEvents.filter((event) => {
+              const eventDate = new Date(event.received_at);
+              return eventDate >= filterDate;
+            });
+          }
+
+          // Filter by search
+          if (searchFilter) {
+            filteredEvents = filteredEvents.filter((event) => {
+              const payload = JSON.stringify(event.payload || {});
+              return payload.toLowerCase().includes(searchFilter);
+            });
+          }
+
+          renderEvents(filteredEvents);
+        }, 300); // 300ms delay
+      }
+
+      function clearFilters() {
+        document.getElementById("typeFilter").value = "";
+        document.getElementById("dateFilter").value = "";
+        document.getElementById("searchFilter").value = "";
+        renderEvents(allEvents);
+      }
+
+      function renderEvents(events) {
+        const tbody = document.getElementById("eventsTableBody");
+        tbody.innerHTML = "";
+
+        if (events.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6">No events found</td></tr>';
+          return;
+        }
+
+        events.forEach((event) => {
+          const timestamp = new Date(event.timestamp).toLocaleString();
+          const receivedAt = new Date(event.received_at).toLocaleString();
+          const payloadStr = JSON.stringify(event.payload || {}, null, 2);
+          const eventTypeClass = `event-${event.type.replace(".", "-")}`;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${event.id}</td>
+                    <td><span class="event-type ${eventTypeClass}">${event.type}</span></td>
+                    <td>${timestamp}</td>
+                    <td>${receivedAt}</td>
+                    <td><div class="event-payload" title="${payloadStr}">${payloadStr.substring(0, 50)}...</div></td>
+                    <td>${event.source_ip || "-"}</td>
+                `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function showAlert(message, type) {
+        const alertContainer = document.getElementById("alertContainer");
+        alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => {
+          alertContainer.innerHTML = "";
+        }, 5000);
+      }
+
+      // Auto refresh is handled by setupRealTimeUpdates()
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Navigation highlighting
+      document.addEventListener("DOMContentLoaded", function () {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll(".navbar-nav .nav-link");
+
+        navLinks.forEach((link) => {
+          if (link.getAttribute("href") === currentPath) {
+            link.classList.add("active");
+            link.style.background = "rgba(255, 255, 255, 0.2)";
+          }
+        });
+
+        // Add fade-in animation to cards
+        const cards = document.querySelectorAll(".card-custom");
+        cards.forEach((card, index) => {
+          card.style.animationDelay = `${index * 0.1}s`;
+          card.classList.add("fade-in");
+        });
+      });
+    </script>
+  </body>
+</html>
