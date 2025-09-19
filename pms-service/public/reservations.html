@@ -75,18 +75,20 @@
             <table class="table table-hover" id="reservationsTable">
               <thead class="table-light">
                 <tr>
-                  <th><i class="fas fa-hashtag me-1"></i>ID</th>
-                  <th><i class="fas fa-user me-1"></i>Guest</th>
-                  <th><i class="fas fa-door-open me-1"></i>Room</th>
+                  <th><i class="fas fa-hashtag me-1"></i>Booking #</th>
+                  <th><i class="fas fa-user me-1"></i>Guest Name</th>
+                  <th><i class="fas fa-door-open me-1"></i>Room Type</th>
+                  <th><i class="fas fa-map-marker me-1"></i>Room Allocation</th>
                   <th><i class="fas fa-calendar-plus me-1"></i>Check-in</th>
                   <th><i class="fas fa-calendar-minus me-1"></i>Check-out</th>
+                  <th><i class="fas fa-dollar-sign me-1"></i>Balance</th>
                   <th><i class="fas fa-info-circle me-1"></i>Status</th>
                   <th><i class="fas fa-cogs me-1"></i>Actions</th>
                 </tr>
               </thead>
               <tbody id="reservationsTableBody">
                 <tr>
-                  <td colspan="7" class="text-center py-4">
+                  <td colspan="9" class="text-center py-4">
                     <div class="d-flex align-items-center justify-content-center">
                       <div class="loading-spinner me-2"></div>
                       <span>Loading reservations...</span>
@@ -107,35 +109,177 @@
         <h2 id="modalTitle">Add New Reservation</h2>
         <form id="reservationForm">
           <input type="hidden" id="reservationId" name="id" />
-          <div class="form-group">
-            <label for="guestId">Guest *</label>
-            <select id="guestId" name="guest_id" required>
-              <option value="">Select Guest</option>
-            </select>
+
+          <!-- Basic Information -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="guestId">Guest *</label>
+                <select id="guestId" name="guest_id" class="form-control" required>
+                  <option value="">Select Guest</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="bookingNumber">Booking Number</label>
+                <input type="text" id="bookingNumber" name="booking_number" class="form-control" placeholder="Auto-generated if empty" readonly />
+                <small class="text-muted">Leave empty for auto-generation</small>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="roomNumber">Room Number *</label>
-            <input type="text" id="roomNumber" name="room_number" required />
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="bookingSource">Booking Source</label>
+                <select id="bookingSource" name="booking_source" class="form-control">
+                  <option value="website">Website</option>
+                  <option value="phone">Phone</option>
+                  <option value="walk_in">Walk-in</option>
+                  <option value="ota">OTA</option>
+                  <option value="corporate">Corporate</option>
+                  <option value="agency">Agency</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="checkIn">Check-in Date *</label>
-            <input type="date" id="checkIn" name="check_in" required />
+
+          <!-- Room Information -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomType">Room Type</label>
+                <select id="roomType" name="room_type" class="form-control">
+                  <option value="standard">Standard</option>
+                  <option value="deluxe">Deluxe</option>
+                  <option value="suite">Suite</option>
+                  <option value="executive">Executive</option>
+                  <option value="presidential">Presidential</option>
+                  <option value="villa">Villa</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomNumber">Room Number *</label>
+                <input type="text" id="roomNumber" name="room_number" class="form-control" required />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomAllocation">Room Allocation</label>
+                <input type="text" id="roomAllocation" name="room_allocation" class="form-control" placeholder="e.g., Floor 3, Wing A" />
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="checkOut">Check-out Date *</label>
-            <input type="date" id="checkOut" name="check_out" required />
+
+          <!-- Dates -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="checkIn">Check-in Date *</label>
+                <input type="date" id="checkIn" name="check_in" class="form-control" required />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="checkOut">Check-out Date *</label>
+                <input type="date" id="checkOut" name="check_out" class="form-control" required />
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="status">Status</label>
-            <select id="status" name="status">
-              <option value="booked">Booked</option>
-              <option value="checked_in">Checked In</option>
-              <option value="checked_out">Checked Out</option>
-              <option value="canceled">Canceled</option>
-            </select>
+
+          <!-- Financial Information -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="totalAmount">Total Amount ($)</label>
+                <input type="number" id="totalAmount" name="total_amount" class="form-control" step="0.01" min="0" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="paidAmount">Paid Amount ($)</label>
+                <input type="number" id="paidAmount" name="paid_amount" class="form-control" step="0.01" min="0" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="currency">Currency</label>
+                <select id="currency" name="currency" class="form-control">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="IDR">IDR</option>
+                  <option value="SGD">SGD</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <button type="submit" class="btn">Save Reservation</button>
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+
+          <!-- Guest Count & Status -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfGuests">Number of Guests</label>
+                <input type="number" id="numberOfGuests" name="number_of_guests" class="form-control" min="1" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfAdults">Number of Adults</label>
+                <input type="number" id="numberOfAdults" name="number_of_adults" class="form-control" min="0" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfChildren">Number of Children</label>
+                <input type="number" id="numberOfChildren" name="number_of_children" class="form-control" min="0" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="specialRequests">Special Requests</label>
+                <textarea id="specialRequests" name="special_requests" class="form-control" rows="3" placeholder="Any special requests or requirements..."></textarea>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Internal notes..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" class="form-control">
+                  <option value="booked">Booked</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="checked_in">Checked In</option>
+                  <option value="checked_out">Checked Out</option>
+                  <option value="canceled">Canceled</option>
+                  <option value="no_show">No Show</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary-custom btn-custom"><i class="fas fa-save me-2"></i>Save Reservation</button>
+          </div>
         </form>
       </div>
     </div>
@@ -270,7 +414,7 @@
           if (tbody) {
             tbody.innerHTML = `
               <tr>
-                <td colspan="7" class="text-center py-4">
+                <td colspan="9" class="text-center py-4">
                   <div class="text-danger">
                     <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
                     <p>Failed to load reservations. <button class="btn btn-sm btn-outline-primary" onclick="loadReservations(true)">Retry</button></p>
@@ -302,7 +446,7 @@
         allGuests.forEach((guest) => {
           const option = document.createElement("option");
           option.value = guest.id;
-          option.textContent = `${guest.name} (${guest.email})`;
+          option.textContent = `${guest.display_name} (${guest.email})`;
           select.appendChild(option);
         });
       }
@@ -319,10 +463,11 @@
         if (reservations.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="7" class="text-center py-4">
+              <td colspan="9" class="text-center py-4">
                 <div class="text-muted">
                   <i class="fas fa-calendar-times fa-2x mb-2"></i>
                   <p>No reservations found</p>
+                  <small>Try adjusting your filters or create a new reservation</small>
                 </div>
               </td>
             </tr>
@@ -332,19 +477,31 @@
 
         reservations.forEach((reservation) => {
           const guest = allGuests.find((g) => g.id == reservation.guest_id);
-          const guestName = guest ? `${guest.name} (${guest.email})` : `Guest ${reservation.guest_id}`;
+          const guestName = guest ? guest.display_name : `Guest ${reservation.guest_id}`;
           const statusClass = `status-${reservation.status}`;
           const statusText = reservation.status.replace("_", " ").toUpperCase();
+          const balance = reservation.balance || 0;
+          const balanceClass = balance > 0 ? "text-danger" : balance < 0 ? "text-warning" : "text-success";
 
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td><code>${reservation.id}</code></td>
             <td>
-              <strong>${guestName}</strong>
+              <code class="text-primary">${reservation.booking_number || reservation.id}</code>
+            </td>
+            <td>
+              <div>
+                <strong>${guestName}</strong>
+                ${guest ? `<br><small class="text-muted">${guest.email}</small>` : ""}
+              </div>
             </td>
             <td>
               <span class="badge bg-light text-dark">
-                <i class="fas fa-door-open me-1"></i>${reservation.room_number}
+                <i class="fas fa-bed me-1"></i>${reservation.room_type || "Standard"}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-secondary">
+                <i class="fas fa-map-marker me-1"></i>${reservation.room_allocation || reservation.room_number}
               </span>
             </td>
             <td>
@@ -354,6 +511,12 @@
             <td>
               <i class="fas fa-calendar-minus me-1 text-danger"></i>
               ${new Date(reservation.check_out).toLocaleDateString()}
+            </td>
+            <td>
+              <span class="${balanceClass} fw-bold">
+                <i class="fas fa-dollar-sign me-1"></i>
+                ${balance.toFixed(2)}
+              </span>
             </td>
             <td>
               <span class="status-badge ${statusClass}">${statusText}</span>
@@ -391,6 +554,21 @@
         document.getElementById("checkIn").value = reservation.check_in;
         document.getElementById("checkOut").value = reservation.check_out;
         document.getElementById("status").value = reservation.status;
+
+        // New fields
+        document.getElementById("bookingNumber").value = reservation.booking_number || "";
+        document.getElementById("roomType").value = reservation.room_type || "";
+        document.getElementById("roomAllocation").value = reservation.room_allocation || "";
+        document.getElementById("bookingSource").value = reservation.booking_source || "website";
+        document.getElementById("totalAmount").value = reservation.total_amount || "";
+        document.getElementById("paidAmount").value = reservation.paid_amount || "";
+        document.getElementById("currency").value = reservation.currency || "USD";
+        document.getElementById("numberOfGuests").value = reservation.number_of_guests || "";
+        document.getElementById("numberOfAdults").value = reservation.number_of_adults || "";
+        document.getElementById("numberOfChildren").value = reservation.number_of_children || "";
+        document.getElementById("specialRequests").value = reservation.special_requests || "";
+        document.getElementById("notes").value = reservation.notes || "";
+
         document.getElementById("reservationModal").style.display = "block";
       }
 
@@ -407,7 +585,27 @@
           room_number: formData.get("room_number"),
           check_in: formData.get("check_in"),
           check_out: formData.get("check_out"),
+
+          // New fields
+          booking_number: formData.get("booking_number") || undefined,
+          room_type: formData.get("room_type") || undefined,
+          room_allocation: formData.get("room_allocation") || undefined,
+          booking_source: formData.get("booking_source") || "website",
           status: formData.get("status") || "booked",
+
+          // Financial fields
+          total_amount: formData.get("total_amount") ? parseFloat(formData.get("total_amount")) : 0,
+          paid_amount: formData.get("paid_amount") ? parseFloat(formData.get("paid_amount")) : 0,
+          currency: formData.get("currency") || "USD",
+
+          // Guest count
+          number_of_guests: formData.get("number_of_guests") ? parseInt(formData.get("number_of_guests")) : undefined,
+          number_of_adults: formData.get("number_of_adults") ? parseInt(formData.get("number_of_adults")) : undefined,
+          number_of_children: formData.get("number_of_children") ? parseInt(formData.get("number_of_children")) : undefined,
+
+          // Additional info
+          special_requests: formData.get("special_requests") || undefined,
+          notes: formData.get("notes") || undefined,
         };
 
         const reservationId = formData.get("id");
