@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test - PMS</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h1 class="h2 fw-bold mb-3">API Test Debug</h1>
+          <p class="text-muted">Test koneksi API dan parsing data</p>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <button class="btn btn-primary-custom btn-custom w-100 mb-2" id="testGuestsBtn">Test Guests API</button>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-success-custom btn-custom w-100 mb-2" id="testReservationsBtn">Test Reservations API</button>
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-info btn-custom w-100 mb-2" id="testWebhookBtn">Test Webhook Status API</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card-custom">
+            <div class="card-header">
+              <h5 class="mb-0">API Response</h5>
+            </div>
+            <div class="card-body">
+              <pre id="apiResponse" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-size: 0.9em">Click a test button to see API response...</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+
+      // Add event listeners for buttons
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("testGuestsBtn").addEventListener("click", testGuestsAPI);
+        document.getElementById("testReservationsBtn").addEventListener("click", testReservationsAPI);
+        document.getElementById("testWebhookBtn").addEventListener("click", testWebhookAPI);
+      });
+
+      async function testGuestsAPI() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Loading...";
+
+        try {
+          console.log("Testing guests API...");
+          const response = await fetch(`${API_BASE}/guests`);
+          const data = await response.json();
+
+          console.log("Guests API Response:", data);
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+
+          if (data.success && data.data) {
+            console.log("✅ Guests API working! Found", data.data.data?.length || 0, "guests");
+          } else {
+            console.error("❌ Guests API failed:", data);
+          }
+        } catch (error) {
+          console.error("❌ Guests API Error:", error);
+          responseEl.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testReservationsAPI() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Loading...";
+
+        try {
+          console.log("Testing reservations API...");
+          const response = await fetch(`${API_BASE}/reservations`);
+          const data = await response.json();
+
+          console.log("Reservations API Response:", data);
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+
+          if (data.success && data.data) {
+            console.log("✅ Reservations API working! Found", data.data.data?.length || 0, "reservations");
+          } else {
+            console.error("❌ Reservations API failed:", data);
+          }
+        } catch (error) {
+          console.error("❌ Reservations API Error:", error);
+          responseEl.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testWebhookAPI() {
+        const responseEl = document.getElementById("apiResponse");
+        responseEl.textContent = "Loading...";
+
+        try {
+          console.log("Testing webhook status API...");
+          const response = await fetch(`${API_BASE}/guests/webhook/status`);
+          const data = await response.json();
+
+          console.log("Webhook Status API Response:", data);
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+
+          if (data.success) {
+            console.log("✅ Webhook Status API working!");
+          } else {
+            console.error("❌ Webhook Status API failed:", data);
+          }
+        } catch (error) {
+          console.error("❌ Webhook Status API Error:", error);
+          responseEl.textContent = `Error: ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Reservations - PMS</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <!-- Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/index.html">
+            <i class="fas fa-hotel me-2"></i>
+            PMS Dashboard
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/index.html"> <i class="fas fa-tachometer-alt me-1"></i>Dashboard </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/guests.html"> <i class="fas fa-users me-1"></i>Manage Guests </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/reservations.html"> <i class="fas fa-calendar-check me-1"></i>Manage Reservations </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/webhook-status.html"> <i class="fas fa-link me-1"></i>Webhook Status </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-calendar-check text-success me-3" style="font-size: 2rem"></i>
+            <div>
+              <h1 class="h2 fw-bold mb-1">Manage Reservations</h1>
+              <p class="text-muted mb-0">Create and manage room reservations</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <button class="btn btn-success-custom btn-custom" onclick="openCreateModal()"><i class="fas fa-plus me-2"></i>Add New Reservation</button>
+        </div>
+      </div>
+
+      <!-- Alert Container -->
+      <div id="alertContainer" class="mb-4"></div>
+
+      <!-- Reservation List -->
+      <div class="card-custom">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-calendar-check me-2 text-success"></i>
+            Reservation List
+            <span id="reservationCount" class="badge bg-success ms-2">0</span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="reservationsTable">
+              <thead class="table-light">
+                <tr>
+                  <th><i class="fas fa-hashtag me-1"></i>Booking #</th>
+                  <th><i class="fas fa-user me-1"></i>Guest Name</th>
+                  <th><i class="fas fa-door-open me-1"></i>Room Type</th>
+                  <th><i class="fas fa-map-marker me-1"></i>Room Allocation</th>
+                  <th><i class="fas fa-calendar-plus me-1"></i>Check-in</th>
+                  <th><i class="fas fa-calendar-minus me-1"></i>Check-out</th>
+                  <th><i class="fas fa-dollar-sign me-1"></i>Balance</th>
+                  <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                  <th><i class="fas fa-cogs me-1"></i>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reservationsTableBody">
+                <tr>
+                  <td colspan="9" class="text-center py-4">
+                    <div class="d-flex align-items-center justify-content-center">
+                      <div class="loading-spinner me-2"></div>
+                      <span>Loading reservations...</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="reservationModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle">Add New Reservation</h2>
+        <form id="reservationForm">
+          <input type="hidden" id="reservationId" name="id" />
+
+          <!-- Basic Information -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="guestId">Guest *</label>
+                <select id="guestId" name="guest_id" class="form-control" required>
+                  <option value="">Select Guest</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="bookingNumber">Booking Number</label>
+                <input type="text" id="bookingNumber" name="booking_number" class="form-control" placeholder="Auto-generated if empty" readonly />
+                <small class="text-muted">Leave empty for auto-generation</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="bookingSource">Booking Source</label>
+                <select id="bookingSource" name="booking_source" class="form-control">
+                  <option value="website">Website</option>
+                  <option value="phone">Phone</option>
+                  <option value="walk_in">Walk-in</option>
+                  <option value="ota">OTA</option>
+                  <option value="corporate">Corporate</option>
+                  <option value="agency">Agency</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Room Information -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomType">Room Type</label>
+                <select id="roomType" name="room_type" class="form-control">
+                  <option value="standard">Standard</option>
+                  <option value="deluxe">Deluxe</option>
+                  <option value="suite">Suite</option>
+                  <option value="executive">Executive</option>
+                  <option value="presidential">Presidential</option>
+                  <option value="villa">Villa</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomNumber">Room Number *</label>
+                <input type="text" id="roomNumber" name="room_number" class="form-control" required />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="roomAllocation">Room Allocation</label>
+                <input type="text" id="roomAllocation" name="room_allocation" class="form-control" placeholder="e.g., Floor 3, Wing A" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dates -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="checkIn">Check-in Date *</label>
+                <input type="date" id="checkIn" name="check_in" class="form-control" required />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="checkOut">Check-out Date *</label>
+                <input type="date" id="checkOut" name="check_out" class="form-control" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Information -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="totalAmount">Total Amount ($)</label>
+                <input type="number" id="totalAmount" name="total_amount" class="form-control" step="0.01" min="0" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="paidAmount">Paid Amount ($)</label>
+                <input type="number" id="paidAmount" name="paid_amount" class="form-control" step="0.01" min="0" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="currency">Currency</label>
+                <select id="currency" name="currency" class="form-control">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="IDR">IDR</option>
+                  <option value="SGD">SGD</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Guest Count & Status -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfGuests">Number of Guests</label>
+                <input type="number" id="numberOfGuests" name="number_of_guests" class="form-control" min="1" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfAdults">Number of Adults</label>
+                <input type="number" id="numberOfAdults" name="number_of_adults" class="form-control" min="0" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="numberOfChildren">Number of Children</label>
+                <input type="number" id="numberOfChildren" name="number_of_children" class="form-control" min="0" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="specialRequests">Special Requests</label>
+                <textarea id="specialRequests" name="special_requests" class="form-control" rows="3" placeholder="Any special requests or requirements..."></textarea>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Internal notes..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" class="form-control">
+                  <option value="booked">Booked</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="checked_in">Checked In</option>
+                  <option value="checked_out">Checked Out</option>
+                  <option value="canceled">Canceled</option>
+                  <option value="no_show">No Show</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary-custom btn-custom"><i class="fas fa-save me-2"></i>Save Reservation</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+      let allReservations = [];
+      let allGuests = [];
+      let searchTimeout = null;
+      let isLoading = false;
+
+      // Cache for API responses
+      const apiCache = new Map();
+      const CACHE_DURATION = 5000; // 5 seconds for development (shorter cache)
+
+      // Load data on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        loadGuests();
+        loadReservations();
+        setupRealTimeUpdates();
+      });
+
+      // Handle form submission
+      document.getElementById("reservationForm").addEventListener("submit", handleFormSubmit);
+
+      // Optimized API call with caching
+      async function apiCall(endpoint, options = {}, force = false) {
+        const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
+        const now = Date.now();
+
+        // Check cache first (skip if force refresh)
+        if (!force && apiCache.has(cacheKey)) {
+          const cached = apiCache.get(cacheKey);
+          if (now - cached.timestamp < CACHE_DURATION) {
+            console.log(`Using cached data for ${endpoint}`);
+            return cached.data;
+          }
+          apiCache.delete(cacheKey);
+        }
+
+        console.log(`${force ? "Force refreshing" : "Fetching"} data from ${endpoint}`);
+
+        try {
+          const response = await fetch(endpoint, {
+            ...options,
+            headers: {
+              "Content-Type": "application/json",
+              ...options.headers,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          // Cache successful GET requests (only if not forced)
+          if (!force && (!options.method || options.method === "GET")) {
+            apiCache.set(cacheKey, {
+              data: data,
+              timestamp: now,
+            });
+            console.log(`Cached data for ${endpoint}`);
+          }
+
+          return data;
+        } catch (error) {
+          console.error("API call failed:", error);
+          throw error;
+        }
+      }
+
+      // Setup real-time updates
+      function setupRealTimeUpdates() {
+        // Auto refresh every 15 seconds for development (less aggressive)
+        setInterval(() => {
+          if (!isLoading) {
+            // Only refresh if not currently loading
+            loadReservations(true); // Force refresh
+          }
+        }, 15000);
+
+        // Listen for visibility change to refresh when tab becomes active
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden && !isLoading) {
+            loadReservations(true);
+          }
+        });
+      }
+
+      async function loadGuests() {
+        try {
+          const data = await apiCall(`${API_BASE}/guests`);
+          if (data.success) {
+            allGuests = data.data || [];
+            populateGuestSelect();
+          }
+        } catch (error) {
+          console.error("Error loading guests:", error);
+        }
+      }
+
+      async function loadReservations(force = false) {
+        if (isLoading && !force) return;
+
+        isLoading = true;
+        const loadingEl = document.querySelector(".loading-spinner");
+
+        // Show loading state
+        if (loadingEl) {
+          loadingEl.style.display = "inline-block";
+        }
+
+        try {
+          const data = await apiCall(`${API_BASE}/reservations`, {}, force);
+
+          if (data.success) {
+            // Backend returns: { success: true, data: { data: [...], pagination: {...} } }
+            allReservations = data.data?.data || [];
+            renderReservations(allReservations);
+            updateReservationCount();
+          } else {
+            throw new Error(data.error?.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Error loading reservations:", error);
+          showAlert("Error loading reservations: " + error.message, "error");
+
+          // Show error state in table
+          const tbody = document.getElementById("reservationsTableBody");
+          if (tbody) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="9" class="text-center py-4">
+                  <div class="text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Failed to load reservations. <button class="btn btn-sm btn-outline-primary" onclick="loadReservations(true)">Retry</button></p>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+        } finally {
+          // Always hide loading state
+          isLoading = false;
+          if (loadingEl) {
+            loadingEl.style.display = "none";
+          }
+        }
+      }
+
+      function updateReservationCount() {
+        const countEl = document.getElementById("reservationCount");
+        if (countEl) {
+          countEl.textContent = allReservations.length;
+        }
+      }
+
+      function populateGuestSelect() {
+        const select = document.getElementById("guestId");
+        select.innerHTML = '<option value="">Select Guest</option>';
+
+        allGuests.forEach((guest) => {
+          const option = document.createElement("option");
+          option.value = guest.id;
+          option.textContent = `${guest.display_name} (${guest.email})`;
+          select.appendChild(option);
+        });
+      }
+
+      function renderReservations(reservations) {
+        const tbody = document.getElementById("reservationsTableBody");
+        const reservationCount = document.getElementById("reservationCount");
+
+        // Update count
+        reservationCount.textContent = reservations.length;
+
+        tbody.innerHTML = "";
+
+        if (reservations.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="9" class="text-center py-4">
+                <div class="text-muted">
+                  <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                  <p>No reservations found</p>
+                  <small>Try adjusting your filters or create a new reservation</small>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        reservations.forEach((reservation) => {
+          const guest = allGuests.find((g) => g.id == reservation.guest_id);
+          const guestName = guest ? guest.display_name : `Guest ${reservation.guest_id}`;
+          const statusClass = `status-${reservation.status}`;
+          const statusText = reservation.status.replace("_", " ").toUpperCase();
+          const balance = reservation.balance || 0;
+          const balanceClass = balance > 0 ? "text-danger" : balance < 0 ? "text-warning" : "text-success";
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>
+              <code class="text-primary">${reservation.booking_number || reservation.id}</code>
+            </td>
+            <td>
+              <div>
+                <strong>${guestName}</strong>
+                ${guest ? `<br><small class="text-muted">${guest.email}</small>` : ""}
+              </div>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark">
+                <i class="fas fa-bed me-1"></i>${reservation.room_type || "Standard"}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-secondary">
+                <i class="fas fa-map-marker me-1"></i>${reservation.room_allocation || reservation.room_number}
+              </span>
+            </td>
+            <td>
+              <i class="fas fa-calendar-plus me-1 text-success"></i>
+              ${new Date(reservation.check_in).toLocaleDateString()}
+            </td>
+            <td>
+              <i class="fas fa-calendar-minus me-1 text-danger"></i>
+              ${new Date(reservation.check_out).toLocaleDateString()}
+            </td>
+            <td>
+              <span class="${balanceClass} fw-bold">
+                <i class="fas fa-dollar-sign me-1"></i>
+                ${balance.toFixed(2)}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge ${statusClass}">${statusText}</span>
+            </td>
+            <td>
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-primary" onclick="editReservation(${reservation.id})" title="Edit Reservation">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteReservation(${reservation.id})" title="Delete Reservation">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function openCreateModal() {
+        document.getElementById("modalTitle").textContent = "Add New Reservation";
+        document.getElementById("reservationForm").reset();
+        document.getElementById("reservationId").value = "";
+        document.getElementById("reservationModal").style.display = "block";
+      }
+
+      function editReservation(id) {
+        const reservation = allReservations.find((r) => r.id == id);
+        if (!reservation) return;
+
+        document.getElementById("modalTitle").textContent = "Edit Reservation";
+        document.getElementById("reservationId").value = reservation.id;
+        document.getElementById("guestId").value = reservation.guest_id;
+        document.getElementById("roomNumber").value = reservation.room_number;
+        document.getElementById("checkIn").value = reservation.check_in;
+        document.getElementById("checkOut").value = reservation.check_out;
+        document.getElementById("status").value = reservation.status;
+
+        // New fields
+        document.getElementById("bookingNumber").value = reservation.booking_number || "";
+        document.getElementById("roomType").value = reservation.room_type || "";
+        document.getElementById("roomAllocation").value = reservation.room_allocation || "";
+        document.getElementById("bookingSource").value = reservation.booking_source || "website";
+        document.getElementById("totalAmount").value = reservation.total_amount || "";
+        document.getElementById("paidAmount").value = reservation.paid_amount || "";
+        document.getElementById("currency").value = reservation.currency || "USD";
+        document.getElementById("numberOfGuests").value = reservation.number_of_guests || "";
+        document.getElementById("numberOfAdults").value = reservation.number_of_adults || "";
+        document.getElementById("numberOfChildren").value = reservation.number_of_children || "";
+        document.getElementById("specialRequests").value = reservation.special_requests || "";
+        document.getElementById("notes").value = reservation.notes || "";
+
+        document.getElementById("reservationModal").style.display = "block";
+      }
+
+      function closeModal() {
+        document.getElementById("reservationModal").style.display = "none";
+      }
+
+      async function handleFormSubmit(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const reservationData = {
+          guest_id: parseInt(formData.get("guest_id")),
+          room_number: formData.get("room_number"),
+          check_in: formData.get("check_in"),
+          check_out: formData.get("check_out"),
+
+          // New fields
+          booking_number: formData.get("booking_number") || undefined,
+          room_type: formData.get("room_type") || undefined,
+          room_allocation: formData.get("room_allocation") || undefined,
+          booking_source: formData.get("booking_source") || "website",
+          status: formData.get("status") || "booked",
+
+          // Financial fields
+          total_amount: formData.get("total_amount") ? parseFloat(formData.get("total_amount")) : 0,
+          paid_amount: formData.get("paid_amount") ? parseFloat(formData.get("paid_amount")) : 0,
+          currency: formData.get("currency") || "USD",
+
+          // Guest count
+          number_of_guests: formData.get("number_of_guests") ? parseInt(formData.get("number_of_guests")) : undefined,
+          number_of_adults: formData.get("number_of_adults") ? parseInt(formData.get("number_of_adults")) : undefined,
+          number_of_children: formData.get("number_of_children") ? parseInt(formData.get("number_of_children")) : undefined,
+
+          // Additional info
+          special_requests: formData.get("special_requests") || undefined,
+          notes: formData.get("notes") || undefined,
+        };
+
+        const reservationId = formData.get("id");
+        const isEdit = reservationId && reservationId !== "";
+
+        const url = isEdit ? `${API_BASE}/reservations/${reservationId}` : `${API_BASE}/reservations`;
+        const method = isEdit ? "PUT" : "POST";
+
+        try {
+          const data = await apiCall(url, {
+            method: method,
+            body: JSON.stringify(reservationData),
+          });
+
+          if (data.success) {
+            showAlert(`Reservation ${isEdit ? "updated" : "created"} successfully!`, "success");
+            closeModal();
+            // Clear cache and reload
+            apiCache.clear();
+            loadReservations(true);
+          } else {
+            throw new Error(data.error?.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Error saving reservation:", error);
+          showAlert(`Error ${isEdit ? "updating" : "creating"} reservation: ` + error.message, "error");
+        }
+      }
+
+      async function deleteReservation(id) {
+        if (!confirm("Are you sure you want to delete this reservation?")) return;
+
+        try {
+          const data = await apiCall(`${API_BASE}/reservations/${id}`, {
+            method: "DELETE",
+          });
+
+          if (data.success) {
+            showAlert("Reservation deleted successfully!", "success");
+            // Clear cache and reload
+            apiCache.clear();
+            loadReservations(true);
+          } else {
+            throw new Error(data.error?.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Error deleting reservation:", error);
+          showAlert("Error deleting reservation: " + error.message, "error");
+        }
+      }
+
+      function showAlert(message, type) {
+        const alertContainer = document.getElementById("alertContainer");
+        alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => {
+          alertContainer.innerHTML = "";
+        }, 5000);
+      }
+
+      // Form validation
+      document.getElementById("reservationForm").addEventListener("submit", function (event) {
+        if (!this.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        this.classList.add("was-validated");
+      });
+
+      // Auto-hide alerts
+      setTimeout(() => {
+        const alerts = document.querySelectorAll(".alert");
+        alerts.forEach((alert) => {
+          alert.style.transition = "opacity 0.5s";
+          alert.style.opacity = "0";
+          setTimeout(() => alert.remove(), 500);
+        });
+      }, 5000);
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

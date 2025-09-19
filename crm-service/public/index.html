@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM - Customer Relationship Management</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div class="main-container fade-in">
+      <!-- Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/index.html">
+            <i class="fas fa-chart-line me-2"></i>
+            CRM Dashboard
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/index.html"> <i class="fas fa-tachometer-alt me-1"></i>Dashboard </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/events.html"> <i class="fas fa-history me-1"></i>View Events </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/guest-profiles.html"> <i class="fas fa-address-book me-1"></i>Guest Profiles </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-chart-line text-primary me-3" style="font-size: 2rem"></i>
+            <div>
+              <h1 class="h2 fw-bold mb-1">Customer Relationship Management</h1>
+              <p class="text-muted mb-0">Real-time customer insights and webhook monitoring</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="row mb-5">
+        <div class="col-12">
+          <h2 class="h3 fw-bold mb-4">
+            <i class="fas fa-chart-bar text-primary me-2"></i>
+            Dashboard Overview
+          </h2>
+          <div class="row g-4">
+            <div class="col-md-4">
+              <div class="stats-card">
+                <div class="mb-3">
+                  <i class="fas fa-history text-white" style="font-size: 2rem"></i>
+                </div>
+                <div id="totalEvents" class="stat-value">-</div>
+                <div class="stat-label">Total Events</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stats-card">
+                <div class="mb-3">
+                  <i class="fas fa-users text-white" style="font-size: 2rem"></i>
+                </div>
+                <div id="totalGuests" class="stat-value">-</div>
+                <div class="stat-label">Guest Profiles</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stats-card">
+                <div class="mb-3">
+                  <i class="fas fa-bolt text-white" style="font-size: 2rem"></i>
+                </div>
+                <div id="recentActivityCount" class="stat-value">-</div>
+                <div class="stat-label">Active Profiles</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="row mb-5">
+        <div class="col-12">
+          <div class="card-custom">
+            <div class="card-header bg-white">
+              <h5 class="mb-0">
+                <i class="fas fa-clock text-primary me-2"></i>
+                Recent Activity
+              </h5>
+            </div>
+            <div class="card-body">
+              <div id="recentActivity" class="p-2">
+                <div class="d-flex align-items-center justify-content-center py-4">
+                  <div class="loading-spinner me-2"></div>
+                  <span>Loading recent activity...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Information -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card-custom p-4">
+            <div class="text-center mb-4">
+              <i class="fas fa-info-circle text-info" style="font-size: 3rem"></i>
+            </div>
+            <h3 class="h4 fw-bold text-center mb-3">System Information</h3>
+            <p class="text-muted text-center mb-4">This CRM system receives webhooks from the PMS (Property Management System) and maintains customer profiles with aggregated data.</p>
+            <div class="row text-center g-4">
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-shield-alt text-primary mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">Secure Integration</h6>
+                  <small class="text-muted">HMAC signature verification for webhook authenticity</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-database text-success mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">Data Aggregation</h6>
+                  <small class="text-muted">Automatic guest profile updates and statistics</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-3">
+                  <i class="fas fa-sync text-warning mb-2" style="font-size: 2rem"></i>
+                  <h6 class="fw-bold">Real-time Sync</h6>
+                  <small class="text-muted">Instant synchronization via webhook events</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "/api/v1";
+      let isLoading = false;
+      let rateLimitBackoff = 1000; // Start with 1 second backoff
+      let consecutiveErrors = 0;
+      let lastRequestTime = 0;
+
+      // Cache for API responses
+      const apiCache = new Map();
+      const CACHE_DURATION = 30000; // 30 seconds cache (increased for rate limiting)
+      const MIN_REQUEST_INTERVAL = 2000; // Minimum 2 seconds between requests
+
+      // Request deduplication - prevent multiple simultaneous requests to same endpoint
+      const activeRequests = new Map();
+
+      // Load dashboard data on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        loadDashboardStats();
+        loadRecentActivity();
+        setupRealTimeUpdates();
+      });
+
+      // Optimized API call with caching, rate limit handling, and deduplication
+      async function apiCall(endpoint, options = {}, force = false) {
+        const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
+        const now = Date.now();
+
+        // Request deduplication: If same request is already in progress, wait for it
+        if (activeRequests.has(cacheKey) && !force) {
+          console.log(`Request deduplication: Waiting for existing request to ${endpoint}`);
+          return activeRequests.get(cacheKey);
+        }
+
+        // Rate limiting: Ensure minimum interval between requests
+        const timeSinceLastRequest = now - lastRequestTime;
+        if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+          const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+          console.log(`Rate limiting: Waiting ${waitTime}ms before next request`);
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+
+        // Check cache first (skip if force refresh)
+        if (!force && apiCache.has(cacheKey)) {
+          const cached = apiCache.get(cacheKey);
+          if (now - cached.timestamp < CACHE_DURATION) {
+            console.log(`Using cached data for ${endpoint}`);
+            return cached.data;
+          }
+          apiCache.delete(cacheKey);
+        }
+
+        console.log(`${force ? "Force refreshing" : "Fetching"} data from ${endpoint}`);
+
+        // Store request for deduplication
+        const requestPromise = (async () => {
+          try {
+            const response = await fetch(endpoint, {
+              ...options,
+              headers: {
+                "Content-Type": "application/json",
+                ...options.headers,
+              },
+            });
+
+            lastRequestTime = Date.now();
+
+            if (response.status === 429) {
+              // Rate limit exceeded - implement exponential backoff
+              consecutiveErrors++;
+              const backoffTime = Math.min(rateLimitBackoff * Math.pow(2, consecutiveErrors), 30000); // Max 30 seconds
+              rateLimitBackoff = backoffTime;
+
+              console.warn(`Rate limit exceeded for ${endpoint}. Backing off for ${backoffTime}ms`);
+              throw new Error(`RATE_LIMIT_EXCEEDED: Backing off for ${backoffTime}ms`);
+            }
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Reset error counter on success
+            if (consecutiveErrors > 0) {
+              consecutiveErrors = 0;
+              rateLimitBackoff = 1000; // Reset backoff
+              console.log("Rate limit backoff reset after successful request");
+            }
+
+            // Cache successful GET requests (only if not forced)
+            if (!force && (!options.method || options.method === "GET")) {
+              apiCache.set(cacheKey, {
+                data: data,
+                timestamp: now,
+              });
+              console.log(`Cached data for ${endpoint}`);
+            }
+
+            return data;
+          } catch (error) {
+            console.error("API call failed:", error);
+
+            // If it's a rate limit error, schedule retry with backoff
+            if (error.message.includes("RATE_LIMIT_EXCEEDED")) {
+              const backoffTime = Math.min(rateLimitBackoff * Math.pow(2, consecutiveErrors), 30000);
+              console.log(`Scheduling retry for ${endpoint} in ${backoffTime}ms`);
+
+              return new Promise((resolve, reject) => {
+                setTimeout(async () => {
+                  try {
+                    const result = await apiCall(endpoint, options, force);
+                    resolve(result);
+                  } catch (retryError) {
+                    reject(retryError);
+                  }
+                }, backoffTime);
+              });
+            }
+
+            throw error;
+          } finally {
+            // Clean up active request
+            activeRequests.delete(cacheKey);
+          }
+        })();
+
+        // Store the promise for deduplication
+        activeRequests.set(cacheKey, requestPromise);
+        return requestPromise;
+      }
+
+      // Setup real-time updates with reduced frequency
+      function setupRealTimeUpdates() {
+        // Auto refresh every 60 seconds (much less aggressive to prevent rate limiting)
+        setInterval(() => {
+          if (!isLoading && consecutiveErrors === 0) {
+            // Only refresh if not currently loading and no recent errors
+            console.log("Auto-refreshing dashboard data...");
+            loadDashboardStats(true); // Force refresh
+            loadRecentActivity(true);
+          }
+        }, 60000); // 60 seconds instead of 15
+
+        // Listen for visibility change to refresh when tab becomes active
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden && !isLoading && consecutiveErrors === 0) {
+            console.log("Tab became active, refreshing data...");
+            loadDashboardStats(true);
+            loadRecentActivity(true);
+          }
+        });
+      }
+
+      async function loadDashboardStats(force = false) {
+        if (isLoading && !force) return;
+
+        isLoading = true;
+        const loadingEl = document.querySelector(".loading-spinner");
+
+        // Show loading state
+        if (loadingEl) {
+          loadingEl.style.display = "inline-block";
+        }
+
+        try {
+          // Load events count
+          const eventsData = await apiCall(`${API_BASE}/events`, {}, force);
+          if (eventsData.success) {
+            // CRM returns direct array: { success: true, data: [...] }
+            const eventsCount = Array.isArray(eventsData.data) ? eventsData.data.length : 0;
+            document.getElementById("totalEvents").textContent = eventsCount;
+          }
+
+          // Load guest profiles count
+          const guestsData = await apiCall(`${API_BASE}/guest-profiles`, {}, force);
+          if (guestsData.success) {
+            // CRM returns direct array: { success: true, data: [...] }
+            const count = Array.isArray(guestsData.data) ? guestsData.data.length : 0;
+            document.getElementById("totalGuests").textContent = count;
+            document.getElementById("recentActivityCount").textContent = count;
+          }
+        } catch (error) {
+          console.error("Error loading dashboard stats:", error);
+          document.getElementById("totalEvents").textContent = "Error";
+          document.getElementById("totalGuests").textContent = "Error";
+          document.getElementById("recentActivityCount").textContent = "Error";
+        } finally {
+          // Always hide loading state
+          isLoading = false;
+          if (loadingEl) {
+            loadingEl.style.display = "none";
+          }
+        }
+      }
+
+      async function loadRecentActivity(force = false) {
+        try {
+          const data = await apiCall(`${API_BASE}/events`, {}, force);
+
+          if (data.success) {
+            // CRM returns direct array: { success: true, data: [...] }
+            const events = Array.isArray(data.data) ? data.data : [];
+            const recentEvents = events.slice(0, 10); // Show last 10 events
+            renderRecentActivity(recentEvents);
+          } else {
+            throw new Error(data.error?.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Error loading recent activity:", error);
+          document.getElementById("recentActivity").innerHTML = `
+            <div class="text-center py-4">
+              <i class="fas fa-exclamation-triangle text-warning mb-2" style="font-size: 2rem;"></i>
+              <p class="text-muted mb-0">Error loading activity</p>
+            </div>
+          `;
+        }
+      }
+
+      function renderRecentActivity(events) {
+        const container = document.getElementById("recentActivity");
+
+        if (events.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-4">
+              <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+              <p class="text-muted mb-0">No recent activity</p>
+            </div>
+          `;
+          return;
+        }
+
+        const activityHtml = events
+          .map((event) => {
+            const eventTime = new Date(event.received_at).toLocaleString();
+            const eventType = event.type.replace("guest.", "").replace("_", " ").toUpperCase();
+            const activityClass = `activity-${event.type.replace(".", "-")}`;
+
+            let description = "";
+            let iconClass = "fas fa-circle";
+            let badgeClass = "bg-secondary";
+
+            if (event.type.includes("created")) {
+              iconClass = "fas fa-plus-circle";
+              badgeClass = "bg-success";
+            } else if (event.type.includes("updated")) {
+              iconClass = "fas fa-edit";
+              badgeClass = "bg-warning";
+            } else if (event.type.includes("deleted")) {
+              iconClass = "fas fa-trash";
+              badgeClass = "bg-danger";
+            }
+
+            if (event.payload && event.payload.email) {
+              description = ` for ${event.payload.email}`;
+            }
+
+            return `
+              <div class="d-flex align-items-center p-3 border-bottom">
+                <div class="flex-shrink-0 me-3">
+                  <i class="${iconClass} ${badgeClass.replace("bg-", "text-")}" style="font-size: 1.2rem;"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-bold ${activityClass}">${eventType}${description}</div>
+                  <small class="text-muted">${eventTime}</small>
+                </div>
+                <div class="flex-shrink-0">
+                  <span class="badge ${badgeClass}">${event.type.split(".")[1]}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        container.innerHTML = activityHtml;
+      }
+
+      // Auto refresh is handled by setupRealTimeUpdates()
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Navigation highlighting
+      document.addEventListener("DOMContentLoaded", function () {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll(".navbar-nav .nav-link");
+
+        navLinks.forEach((link) => {
+          if (link.getAttribute("href") === currentPath) {
+            link.classList.add("active");
+            link.style.background = "rgba(255, 255, 255, 0.2)";
+          }
+        });
+
+        // Add fade-in animation to cards
+        const cards = document.querySelectorAll(".card-custom");
+        cards.forEach((card, index) => {
+          card.style.animationDelay = `${index * 0.1}s`;
+          card.classList.add("fade-in");
+        });
+      });
+    </script>
+  </body>
+</html>
