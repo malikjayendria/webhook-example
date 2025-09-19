@@ -1,4 +1,4 @@
-import { reservationRepo } from "./reservation.repository";
+import { reservationRepo, searchReservations, getReservationsByGuest, getReservationsByStatus, getUpcomingReservations, getReservationStats, ReservationSearchParams } from "./reservation.repository";
 import { guestRepo } from "../guests/guest.repository";
 import { CreateReservationDTO, UpdateReservationDTO } from "./reservation.dto";
 
@@ -9,12 +9,33 @@ export async function createReservation(input: CreateReservationDTO) {
     throw new Error("Guest not found");
   }
 
+  // Generate booking number if not provided
+  const bookingNumber = input.booking_number || generateBookingNumber();
+
+  // Calculate balance
+  const totalAmount = input.total_amount || 0;
+  const paidAmount = input.paid_amount || 0;
+  const balance = totalAmount - paidAmount;
+
   const resv = reservationRepo.create({
+    booking_number: bookingNumber,
     guest_id: String(input.guest_id),
+    room_type: input.room_type,
+    room_allocation: input.room_allocation,
     room_number: input.room_number,
     check_in: input.check_in,
     check_out: input.check_out,
-    status: input.status ?? "booked",
+    booking_source: input.booking_source || "website",
+    status: input.status || "booked",
+    total_amount: totalAmount,
+    paid_amount: paidAmount,
+    balance: balance,
+    currency: input.currency || "USD",
+    number_of_guests: input.number_of_guests,
+    number_of_adults: input.number_of_adults,
+    number_of_children: input.number_of_children,
+    special_requests: input.special_requests,
+    notes: input.notes,
   });
 
   try {
@@ -30,25 +51,46 @@ export async function createReservation(input: CreateReservationDTO) {
       throw new Error("Invalid guest ID");
     }
     if (error.code === "ER_DUP_ENTRY") {
+      if (error.message.includes("booking_number")) {
+        throw new Error("Booking number already exists");
+      }
       throw new Error("Reservation already exists");
     }
     throw error;
   }
 }
 
+// Helper function to generate booking number
+function generateBookingNumber(): string {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `BK${timestamp}${random}`;
+}
+
 export function getReservation(id: string) {
   return reservationRepo.findOne({ where: { id }, relations: ["guest"] });
 }
 
-export function listReservations(options: { limit?: number; offset?: number } = {}) {
-  const { limit = 50, offset = 0 } = options;
+export function listReservations(params: ReservationSearchParams = {}) {
+  return searchReservations(params);
+}
 
-  return reservationRepo.find({
-    order: { id: "DESC" },
-    relations: ["guest"],
-    take: limit,
-    skip: offset,
-  });
+export function getReservationsByGuestId(guestId: string, limit = 10) {
+  return getReservationsByGuest(guestId, limit);
+}
+
+export function getReservationsByStatusFilter(status: string, limit = 50) {
+  return getReservationsByStatus(status, limit);
+}
+
+export function getUpcomingReservationsList(daysAhead = 30) {
+  return getUpcomingReservations(daysAhead);
+}
+
+export function getReservationStatistics() {
+  return getReservationStats();
 }
 
 export async function updateReservation(id: string, input: UpdateReservationDTO) {

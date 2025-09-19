@@ -9,13 +9,17 @@ export async function listGuests(params: { q?: string; limit?: number; offset?: 
 
   const where: FindOptionsWhere<Guest>[] = [];
   if (q) {
+    // Search across multiple fields
     where.push({ email: ILike(`%${q}%`) });
-    where.push({ name: ILike(`%${q}%`) });
+    where.push({ first_name: ILike(`%${q}%`) });
+    where.push({ last_name: ILike(`%${q}%`) });
+    where.push({ preferred_name: ILike(`%${q}%`) });
+    where.push({ phone_number: ILike(`%${q}%`) });
   }
 
   return guestRepo.find({
     where: where.length ? where : undefined,
-    order: { id: "DESC" },
+    order: { created_at: "DESC" },
     take: limit,
     skip: offset,
   });
